@@ -1042,6 +1042,18 @@ html.fr-welcome #sucursalOverlay{ display:flex !important; }
 .inventory-stat{padding:.7rem;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-secondary-bg);text-align:center}
 .inventory-stat strong{display:block;font-size:1.15rem;color:var(--color-heading)}
 .confidence-note{padding:.6rem;border-radius:var(--radius-sm);background:var(--color-warning-bg);color:var(--color-text);font-size:.82rem}
+.continuous-camera{margin-top:.8rem;padding:.75rem;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-image-card-bg)}
+.continuous-camera video{display:block;width:100%;max-height:58vh;object-fit:contain;background:#000;border-radius:var(--radius-md)}
+.capture-counter{text-align:center;font-weight:800;font-size:1.05rem;margin:.55rem 0;color:var(--color-heading)}
+.batch-progress-list{display:flex;flex-direction:column;gap:.5rem;margin-top:.8rem}
+.batch-item{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:.65rem;padding:.55rem;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-surface)}
+.batch-item img{width:52px;height:66px;object-fit:cover;border-radius:5px;background:#111}
+.batch-item strong,.batch-item small{display:block}
+.batch-item small{color:var(--color-text-muted)}
+.batch-status{display:block;font-weight:700;font-size:.78rem;white-space:nowrap}
+.batch-status.ok{color:var(--color-success)}
+.batch-status.warn{color:var(--color-warning)}
+.batch-status.err{color:var(--color-danger)}
 @media(max-width:640px){
   .gemini-products-wrap{overflow-x:auto}
   #geminiReviewModal,#inventoryModal{width:96vw;max-height:92vh;top:4vh}
@@ -1501,6 +1513,17 @@ html.fr-welcome #sucursalOverlay{ display:flex !important; }
     <div class="scanner-choice">
       <button type="button" class="btn btn-primary" id="btnUseCamera">📷 Abrir cámara</button>
       <button type="button" class="btn btn-secondary" id="btnUseGallery">🖼 Elegir imagen</button>
+      <button type="button" class="btn btn-primary" id="btnStartContinuous">📚 Cámara continua</button>
+    </div>
+    <div class="continuous-camera" id="continuousCameraPanel" hidden>
+      <video id="continuousCameraVideo" playsinline autoplay muted></video>
+      <canvas id="continuousCameraCanvas" hidden></canvas>
+      <div class="capture-counter" id="continuousCaptureCounter">0 facturas capturadas</div>
+      <div class="btn-row btn-row-center">
+        <button type="button" class="btn btn-primary" id="btnContinuousCapture">📸 Capturar factura</button>
+        <button type="button" class="btn btn-secondary" id="btnContinuousFinish">✅ Finalizar escaneo</button>
+      </div>
+      <p class="muted">Cambie el papel después de cada captura. Las facturas anteriores se analizan en segundo plano.</p>
     </div>
     <img id="scannerImagePreview" class="scan-preview" alt="Vista previa de la factura" hidden>
     <div class="progress-wrap" id="geminiProgress" hidden>
@@ -1508,6 +1531,22 @@ html.fr-welcome #sucursalOverlay{ display:flex !important; }
       <div class="progress-bar"><div class="progress-fill" style="width:70%"></div></div>
     </div>
     <p class="muted">La fotografía se envía únicamente para extraer los datos. Revise siempre el resultado antes de guardarlo.</p>
+  </div>
+</div>
+
+<div class="floating-modal" id="batchReviewModal" hidden aria-label="Resultados del escaneo continuo" role="dialog">
+  <div class="floating-modal-header">
+    <span>📚 Resultado del lote</span>
+    <button type="button" class="floating-modal-close" id="batchReviewClose" aria-label="Cerrar resultados del lote">✕</button>
+  </div>
+  <div class="floating-modal-body">
+    <div class="inventory-summary" id="batchSummary"></div>
+    <p class="muted" id="batchSummaryText">Las facturas continúan analizándose.</p>
+    <div class="batch-progress-list" id="batchProgressList"></div>
+    <div class="btn-row" style="margin-top:.75rem">
+      <button type="button" class="btn btn-secondary" id="btnRetryBatchErrors">↻ Reintentar errores</button>
+      <button type="button" class="btn btn-primary" id="btnSaveValidBatch">Guardar todas las válidas</button>
+    </div>
   </div>
 </div>
 
