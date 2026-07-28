@@ -1,0 +1,10 @@
+{
+  "name": "Facturas RESS",
+  "short_name": "RESS",
+  "description": "Escáner, control e inventario de facturas RESS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F3F5F8",
+  "theme_color": "#1E3A5F",
+  "orientation": "any"
+}
