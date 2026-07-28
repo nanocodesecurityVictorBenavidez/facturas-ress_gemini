@@ -22,7 +22,7 @@ de Creta Ceibos, Creta Carlos Julio y Creta Daule.
    - Nombre: `GEMINI_API_KEY`
    - Valor: su clave de Google AI Studio.
 4. Opcionalmente cree `GEMINI_MODEL`. Si no se define, se usa
-   `gemini-2.5-flash`.
+   `gemini-3.5-flash`.
 5. Vuelva a desplegar el proyecto.
 
 No escriba la clave dentro de `index.html`, GitHub ni el APK.
