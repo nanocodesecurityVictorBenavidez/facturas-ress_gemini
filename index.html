@@ -5901,7 +5901,7 @@ document.addEventListener('DOMContentLoaded', function(){
       })
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || 'Gemini no pudo analizar la factura.');
+    if (!response.ok) throw new Error(body.error || 'Claude no pudo analizar la factura.');
     return body.invoice || body;
   }
 

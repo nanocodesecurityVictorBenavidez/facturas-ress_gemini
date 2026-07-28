@@ -1,41 +1,42 @@
 const MAX_IMAGE_CHARS = 12_000_000;
 
-const invoiceSchema = {
-  type: "OBJECT",
+// Mismo esquema que antes (formato JSON Schema estándar, que es lo que espera Claude).
+const invoiceInputSchema = {
+  type: "object",
   properties: {
-    razon_social: { type: "STRING" },
-    ruc_empresa: { type: "STRING" },
-    establecimiento: { type: "STRING" },
-    sucursal: { type: "STRING", enum: ["Creta Ceibos", "Creta Carlos Julio", "Creta Daule", "Desconocida"] },
-    direccion_matriz: { type: "STRING" },
-    direccion_sucursal: { type: "STRING" },
-    telefono: { type: "STRING" },
-    numero_factura: { type: "STRING" },
-    clave_acceso: { type: "STRING" },
-    fecha_emision: { type: "STRING", description: "Fecha ISO YYYY-MM-DD" },
-    hora_emision: { type: "STRING", description: "Hora HH:mm" },
-    centro: { type: "STRING" },
-    cliente: { type: "STRING" },
-    identificacion_cliente: { type: "STRING" },
-    usuario: { type: "STRING" },
-    tipo_cliente: { type: "STRING" },
-    subtotal: { type: "NUMBER" },
-    iva: { type: "NUMBER" },
-    valor_pagar: { type: "NUMBER" },
-    forma_pago: { type: "STRING" },
-    confianza: { type: "NUMBER", description: "Valor de 0 a 1 según legibilidad general" },
-    campos_inciertos: { type: "ARRAY", items: { type: "STRING" } },
+    razon_social: { type: "string" },
+    ruc_empresa: { type: "string" },
+    establecimiento: { type: "string" },
+    sucursal: { type: "string", enum: ["Creta Ceibos", "Creta Carlos Julio", "Creta Daule", "Desconocida"] },
+    direccion_matriz: { type: "string" },
+    direccion_sucursal: { type: "string" },
+    telefono: { type: "string" },
+    numero_factura: { type: "string" },
+    clave_acceso: { type: "string" },
+    fecha_emision: { type: "string", description: "Fecha ISO YYYY-MM-DD" },
+    hora_emision: { type: "string", description: "Hora HH:mm" },
+    centro: { type: "string" },
+    cliente: { type: "string" },
+    identificacion_cliente: { type: "string" },
+    usuario: { type: "string" },
+    tipo_cliente: { type: "string" },
+    subtotal: { type: "number" },
+    iva: { type: "number" },
+    valor_pagar: { type: "number" },
+    forma_pago: { type: "string" },
+    confianza: { type: "number", description: "Valor de 0 a 1 según legibilidad general" },
+    campos_inciertos: { type: "array", items: { type: "string" } },
     productos: {
-      type: "ARRAY",
+      type: "array",
       items: {
-        type: "OBJECT",
+        type: "object",
         properties: {
-          codigo: { type: "STRING" },
-          cantidad: { type: "NUMBER" },
-          descripcion: { type: "STRING" },
-          precio_unitario: { type: "NUMBER" },
-          descuento: { type: "NUMBER" },
-          total: { type: "NUMBER" }
+          codigo: { type: "string" },
+          cantidad: { type: "number" },
+          descripcion: { type: "string" },
+          precio_unitario: { type: "number" },
+          descuento: { type: "number" },
+          total: { type: "number" }
         },
         required: ["codigo", "cantidad", "descripcion", "precio_unitario", "descuento", "total"]
       }
@@ -53,8 +54,8 @@ module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).json({ error: "Método no permitido." });
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "Falta configurar GEMINI_API_KEY en Vercel." });
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "Falta configurar ANTHROPIC_API_KEY en Vercel." });
 
   const { imageBase64, mimeType = "image/jpeg" } = req.body || {};
   if (!imageBase64 || typeof imageBase64 !== "string") {
@@ -67,9 +68,7 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: "Formato de imagen no permitido." });
   }
 
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-  const endpoint =
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
 
   const prompt = [
     "Analiza esta fotografía de una factura térmica de RESS CÍA. LTDA.",
@@ -79,47 +78,54 @@ module.exports = async function handler(req, res) {
     "Extrae cada producto por separado. Los valores monetarios deben ser números, no texto.",
     "Determina la forma de pago desde la línea ubicada después de VALOR A PAGAR.",
     "Comprueba que la suma de productos, subtotal, IVA y valor a pagar sea coherente.",
-    "Devuelve únicamente el objeto solicitado por el esquema JSON."
+    "Llama a la herramienta extract_invoice con los datos extraídos."
   ].join("\n");
 
   try {
-    const geminiResponse = await fetch(endpoint, {
+    const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-goog-api-key": apiKey
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        contents: [{
+        model,
+        max_tokens: 2048,
+        temperature: 0.1,
+        messages: [{
           role: "user",
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType, data: imageBase64 } }
+          content: [
+            { type: "text", text: prompt },
+            {
+              type: "image",
+              source: { type: "base64", media_type: mimeType, data: imageBase64 }
+            }
           ]
         }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: invoiceSchema,
-          temperature: 0.1
-        }
+        tools: [{
+          name: "extract_invoice",
+          description: "Guarda los datos estructurados extraídos de la factura.",
+          input_schema: invoiceInputSchema
+        }],
+        tool_choice: { type: "tool", name: "extract_invoice" }
       })
     });
 
-    const result = await geminiResponse.json();
-    if (!geminiResponse.ok) {
-      const message = result?.error?.message || "Gemini rechazó la solicitud.";
-      return res.status(geminiResponse.status).json({ error: message });
+    const result = await claudeResponse.json();
+    if (!claudeResponse.ok) {
+      const message = result?.error?.message || "Claude rechazó la solicitud.";
+      return res.status(claudeResponse.status).json({ error: message });
     }
-    const text = result?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
-    if (!text) return res.status(502).json({ error: "Gemini no devolvió datos de la factura." });
 
-    let invoice;
-    try { invoice = JSON.parse(text); }
-    catch { return res.status(502).json({ error: "Gemini devolvió una respuesta que no se pudo interpretar." }); }
+    const toolUse = (result?.content || []).find(block => block.type === "tool_use");
+    if (!toolUse || !toolUse.input) {
+      return res.status(502).json({ error: "Claude no devolvió datos de la factura." });
+    }
 
-    return res.status(200).json({ invoice });
+    return res.status(200).json({ invoice: toolUse.input });
   } catch (error) {
-    console.error("Gemini invoice error:", error);
-    return res.status(500).json({ error: "No se pudo conectar con Gemini." });
+    console.error("Claude invoice error:", error);
+    return res.status(500).json({ error: "No se pudo conectar con Claude." });
   }
 };
