@@ -1,4 +1,4 @@
-const CACHE = "facturas-ress-shell-v2";
+const CACHE = "facturas-ress-shell-v1";
 const SHELL = ["/", "/index.html", "/manifest.webmanifest"];
 
 self.addEventListener("install", event => {
