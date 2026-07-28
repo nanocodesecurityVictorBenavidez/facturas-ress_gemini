@@ -1054,9 +1054,32 @@ html.fr-welcome #sucursalOverlay{ display:flex !important; }
 .batch-status.ok{color:var(--color-success)}
 .batch-status.warn{color:var(--color-warning)}
 .batch-status.err{color:var(--color-danger)}
+.main-tabs{display:flex;gap:.25rem;align-items:center;overflow-x:auto;padding:.2rem}
+.main-tab{border:0;background:transparent;color:inherit;padding:.55rem .85rem;border-radius:var(--radius-sm);font-weight:700;cursor:pointer;white-space:nowrap}
+.main-tab[aria-selected="true"]{background:var(--color-surface);color:var(--color-primary);box-shadow:var(--shadow-sm)}
+.inventory-tab-panel{padding:.9rem 1rem}
+.inventory-tab-panel>.floating-modal-header{display:none}
+.inventory-tab-panel>.floating-modal-body{padding:0;overflow:visible}
+@media(max-width:1024px){
+  header.app-header{align-items:stretch}
+  .header-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+  .header-actions .btn{width:100%;min-height:44px;white-space:normal}
+  .app-grid{display:block;padding:.7rem}
+  .table-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .floating-modal{width:94vw;max-height:90vh}
+}
 @media(max-width:640px){
   .gemini-products-wrap{overflow-x:auto}
   #geminiReviewModal,#inventoryModal{width:96vw;max-height:92vh;top:4vh}
+  header.app-header{padding:.7rem}
+  .header-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}
+  .header-actions .btn{font-size:.82rem;padding:.55rem .45rem}
+  .table-toolbar{grid-template-columns:1fr}
+  .panel-table>.work-panel-body{padding:.65rem}
+  .table-scroll{max-height:58vh}
+  .floating-modal{position:fixed;left:2vw!important;right:2vw!important;bottom:1vh!important;top:auto!important;transform:none!important;width:96vw!important;max-height:94vh!important}
+  .gemini-grid{grid-template-columns:1fr}
+  .batch-item{grid-template-columns:46px 1fr}
 }
 </style>
 </head>
@@ -1084,16 +1107,15 @@ html.fr-welcome #sucursalOverlay{ display:flex !important; }
       <span class="icon-info-wrap">
         <button type="button" class="icon-info-btn" id="btnSecurityInfo" aria-describedby="securityNote" aria-label="Ver información de privacidad">🧾</button>
         <span class="tooltip" id="securityNote" role="tooltip">
-          Sus imágenes y datos se procesan localmente en este dispositivo. Revise la información reconocida antes de exportarla.
+          Las imágenes escaneadas se envían de forma segura a Gemini para extraer los datos. Revise la información reconocida antes de guardarla.
         </span>
       </span>
       Facturas RESS<span id="sucursalBadge"></span>
     </h1>
   </div>
   <div class="header-actions">
-    <button type="button" class="btn btn-secondary" id="btnOpenUpload" aria-label="Abrir ventana para cargar facturas">📥 Cargar facturas</button>
+    <button type="button" class="btn btn-secondary" id="btnOpenUpload" aria-label="Abrir ventana para cargar facturas por texto">📝 Cargar texto</button>
     <button type="button" class="btn btn-secondary" id="btnOpenScanner" aria-label="Escanear una factura con la cámara">📷 Escanear</button>
-    <button type="button" class="btn btn-secondary" id="btnOpenInventory" aria-label="Ver inventario de productos vendidos">📦 Inventario</button>
     <button type="button" class="btn btn-secondary" id="btnOpenSummary" aria-label="Abrir ventana de resumen de resultados">📊 Resumen de resultados</button>
     <button type="button" class="btn btn-secondary" id="btnOpenBranches" aria-label="Ver todas las sucursales en tiempo real">🏢 Sucursales</button>
     <button type="button" class="btn btn-secondary icon-only-btn" id="btnOpenSettings" aria-label="Ajustes generales" title="Ajustes generales">⚙️</button>
@@ -1104,8 +1126,11 @@ html.fr-welcome #sucursalOverlay{ display:flex !important; }
 
   <!-- ============ TABLA ============ -->
   <section class="work-panel panel-table" id="tableSection" aria-label="Tabla de facturas">
-    <div class="work-panel-header"><span>Facturas detectadas</span></div>
-    <div class="work-panel-body">
+    <div class="work-panel-header main-tabs" role="tablist" aria-label="Facturas e inventario">
+      <button type="button" class="main-tab" id="tabInvoices" role="tab" aria-selected="true">🧾 Facturas detectadas</button>
+      <button type="button" class="main-tab" id="btnOpenInventory" role="tab" aria-selected="false">📦 Inventario</button>
+    </div>
+    <div class="work-panel-body" id="invoiceTabPanel" role="tabpanel" aria-labelledby="tabInvoices">
     <div class="table-toolbar">
       <div class="field">
         <label for="searchInput">Buscar (factura o cliente)</label>
@@ -1177,13 +1202,13 @@ html.fr-welcome #sucursalOverlay{ display:flex !important; }
 <!-- ============ VENTANA EMERGENTE: VISTA PREVIA DE IMAGEN ============ -->
 <div class="floating-modal" id="uploadModal" hidden aria-label="Cargar facturas" role="dialog">
   <div class="floating-modal-header" id="uploadModalHeader">
-    <span>📥 Cargar facturas</span>
+    <span>📝 Cargar facturas por texto</span>
     <button type="button" class="floating-modal-close" id="uploadModalClose" aria-label="Cerrar ventana de carga de facturas">✕</button>
   </div>
   <div class="floating-modal-body">
 
     <!-- SECCIÓN 1: IMÁGENES -->
-    <div class="work-panel" id="imageCard">
+    <div class="work-panel" id="imageCard" hidden>
       <div class="work-panel-header"><span>1. Cargar imágenes</span></div>
       <div class="work-panel-body">
       <div class="dropzone" id="dropzone" tabindex="0" role="button"
@@ -5897,7 +5922,10 @@ document.addEventListener('DOMContentLoaded', function(){
 
   function fillGeminiReview(data){
     geminiDraft = data || {};
-    document.getElementById('grSucursal').value = normalizeGeminiBranch(data.sucursal || data.establecimiento || data.direccion_sucursal);
+    const detectedBranch = normalizeGeminiBranch(data.sucursal || data.establecimiento || data.direccion_sucursal);
+    const branchSelect = document.getElementById('grSucursal');
+    branchSelect.value = currentSucursalId || detectedBranch;
+    branchSelect.disabled = true;
     document.getElementById('grFactura').value = data.numero_factura || '';
     document.getElementById('grClave').value = data.clave_acceso || '';
     document.getElementById('grFecha').value = String(data.fecha_emision || '').slice(0,10);
@@ -5916,9 +5944,11 @@ document.addEventListener('DOMContentLoaded', function(){
     (Array.isArray(data.productos) ? data.productos : []).forEach(addGeminiProductRow);
     if (!tbody.children.length) addGeminiProductRow({});
     const confidence = moneyNumber(data.confianza);
+    const branchWarning = detectedBranch !== currentSucursalId
+      ? ' La factura parece indicar ' + getSucursal(detectedBranch).label + ', pero se conservará la sucursal asignada: ' + getSucursal(currentSucursalId).label + '.'
+      : ' Sucursal asignada: ' + getSucursal(currentSucursalId).label + '.';
     document.getElementById('geminiReviewNote').textContent =
-      confidence ? 'Confianza estimada: ' + Math.round(confidence * 100) + '%. Revise especialmente los campos marcados o borrosos.' :
-      'Revise todos los campos antes de guardar.';
+      (confidence ? 'Confianza estimada: ' + Math.round(confidence * 100) + '%.' : 'Revise todos los campos.') + branchWarning;
     closeGeminiModal('scannerModal');
     openGeminiModal('geminiReviewModal');
   }
@@ -6128,7 +6158,6 @@ document.addEventListener('DOMContentLoaded', function(){
     if (!data.fecha_emision) errors.push('Fecha no legible');
     if (!moneyNumber(data.valor_pagar)) errors.push('Total no legible');
     if (!Array.isArray(data.productos)||!data.productos.length) errors.push('Productos no detectados');
-    if (branch!==currentSucursalId) errors.push('Sucursal: '+getSucursal(branch).label);
     if (reference&&state.invoices.some(inv=>String(inv.referencia||'').trim()===reference)) errors.push('Ya registrada');
     if (reference&&continuousJobs.some(other=>other.id!==job.id&&other.result&&String(other.result.numero_factura||'').trim()===reference)) errors.push('Duplicada en el lote');
     if (moneyNumber(data.confianza)&&moneyNumber(data.confianza)<.72) errors.push('Baja confianza');
@@ -6176,7 +6205,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function continuousResultToInvoice(job){
-    const d=job.result, branch=normalizeGeminiBranch(d.sucursal||d.establecimiento);
+    const d=job.result, branch=currentSucursalId||normalizeGeminiBranch(d.sucursal||d.establecimiento);
     const detail={sucursalId:branch,razon_social:d.razon_social||'RESS CÍA. LTDA.',ruc_empresa:d.ruc_empresa||'',numero_factura:String(d.numero_factura||'').trim(),clave_acceso:d.clave_acceso||'',fecha_emision:String(d.fecha_emision||'').slice(0,10),hora_emision:String(d.hora_emision||'').slice(0,5),centro:d.centro||'',cliente:d.cliente||d.tipo_cliente||'CONSUMIDOR FINAL',identificacion_cliente:d.identificacion_cliente||'',subtotal:moneyNumber(d.subtotal),iva:moneyNumber(d.iva),valor_pagar:moneyNumber(d.valor_pagar),forma_pago:String(d.forma_pago||'OTRO').toUpperCase(),productos:(d.productos||[]).map(p=>({codigo:p.codigo||'',cantidad:moneyNumber(p.cantidad),descripcion:p.descripcion||'',precio_unitario:moneyNumber(p.precio_unitario),descuento:moneyNumber(p.descuento),total:moneyNumber(p.total)}))};
     return {id:uid(),num:0,insSeq:nextInsSeq(),fecha:detail.fecha_emision||new Date().toISOString().slice(0,10),centro:detail.centro,referencia:detail.numero_factura,transaccion:'FACTURA',valor:detail.valor_pagar,cliente:detail.cliente,origen:'Gemini lote',estado:'Revisado',dudoso:false,duplicada:false,esOriginal:true,incluirEnTotal:true,selected:!!appSettings.autoSelectNew,errores:[],detalle:detail};
   }
@@ -6192,12 +6221,12 @@ document.addEventListener('DOMContentLoaded', function(){
     stopContinuousCamera();closeGeminiModal('scannerModal');openGeminiModal('batchReviewModal');renderContinuousBatch();pumpContinuousQueue();
   }
 
-  document.getElementById('btnStartContinuous').addEventListener('click',startContinuousCamera);
-  document.getElementById('btnContinuousCapture').addEventListener('click',captureContinuousInvoice);
-  document.getElementById('btnContinuousFinish').addEventListener('click',finishContinuousScan);
-  document.getElementById('batchReviewClose').addEventListener('click',()=>closeGeminiModal('batchReviewModal'));
-  document.getElementById('btnSaveValidBatch').addEventListener('click',saveValidContinuousBatch);
-  document.getElementById('btnRetryBatchErrors').addEventListener('click',()=>{
+  document.getElementById('btnStartContinuous')?.addEventListener('click',startContinuousCamera);
+  document.getElementById('btnContinuousCapture')?.addEventListener('click',captureContinuousInvoice);
+  document.getElementById('btnContinuousFinish')?.addEventListener('click',finishContinuousScan);
+  document.getElementById('batchReviewClose')?.addEventListener('click',()=>closeGeminiModal('batchReviewModal'));
+  document.getElementById('btnSaveValidBatch')?.addEventListener('click',saveValidContinuousBatch);
+  document.getElementById('btnRetryBatchErrors')?.addEventListener('click',()=>{
     continuousJobs.filter(job=>job.status==='error').forEach(job=>{job.status='queued';job.error='';});
     renderContinuousBatch();pumpContinuousQueue();
   });
@@ -6213,7 +6242,23 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('galleryInvoiceInput').addEventListener('change', e => { analyzeGeminiFile(e.target.files[0]); e.target.value=''; });
   document.getElementById('btnAddGeminiProduct').addEventListener('click', () => addGeminiProductRow({}));
   document.getElementById('btnSaveGeminiInvoice').addEventListener('click', saveGeminiInvoice);
-  document.getElementById('btnOpenInventory').addEventListener('click', async () => { openGeminiModal('inventoryModal'); await renderInventory(); });
+  const inventoryTabPanel = document.getElementById('inventoryModal');
+  inventoryTabPanel.classList.remove('floating-modal');
+  inventoryTabPanel.classList.add('inventory-tab-panel');
+  document.getElementById('tableSection').appendChild(inventoryTabPanel);
+  inventoryTabPanel.hidden = true;
+
+  function showMainTab(tab){
+    const showInventory = tab === 'inventory';
+    document.getElementById('invoiceTabPanel').hidden = showInventory;
+    inventoryTabPanel.hidden = !showInventory;
+    document.getElementById('tabInvoices').setAttribute('aria-selected', String(!showInventory));
+    document.getElementById('btnOpenInventory').setAttribute('aria-selected', String(showInventory));
+    if (showInventory) renderInventory();
+  }
+
+  document.getElementById('tabInvoices').addEventListener('click', () => showMainTab('invoices'));
+  document.getElementById('btnOpenInventory').addEventListener('click', () => showMainTab('inventory'));
   document.getElementById('inventoryBranch').addEventListener('change', renderInventory);
   document.getElementById('inventorySearch').addEventListener('input', renderInventory);
   document.getElementById('btnExportInventory').addEventListener('click', exportInventory);
