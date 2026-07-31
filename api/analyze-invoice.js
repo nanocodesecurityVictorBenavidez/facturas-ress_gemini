@@ -70,10 +70,10 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: "Formato de imagen no permitido." });
   }
 
-  // Se puede forzar otro modelo con la variable GEMINI_MODEL en Vercel
-  // (por ejemplo "gemini-2.5-flash" si algún día hace falta más calidad),
-  // pero por defecto usa Flash-Lite: es el que más cuota gratis tiene.
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+  // Se puede forzar otro modelo con la variable GEMINI_MODEL en Vercel;
+  // el valor por defecto (si esa variable no está) es gemini-3.5-flash,
+  // el modelo definitivo elegido.
+  const model = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
   const prompt = [
     "Analiza esta fotografía de una factura térmica de RESS CÍA. LTDA.",
@@ -81,7 +81,7 @@ module.exports = async function handler(req, res) {
     "Transcribe todos los datos visibles sin inventar. Si un texto no es legible, usa cadena vacía y añádelo a campos_inciertos.",
     "Conserva el número completo de factura y la clave de acceso solo con los caracteres realmente visibles.",
     "Extrae cada producto por separado. Los valores monetarios deben ser números, no texto.",
-    "Determina la forma de pago desde la línea ubicada después de VALOR A PAGAR.",
+    "Determina la forma de pago desde la línea ubicada después de VALOR A PAGAR. Devuelve exactamente una de estas 4 palabras: EFECTIVO, CREDITO, DEBITO o CORAL. Si la línea dice \"CREDITO EMPLEADO\" o \"CRÉDITO EMPLEADO\", es CORAL (así se le dice acá al crédito de empleados). Si no puedes determinarla con claridad, deja el campo vacío en vez de adivinar.",
     "Comprueba que la suma de productos, subtotal, IVA y valor a pagar sea coherente.",
     "Devuelve SOLO el JSON con los datos extraídos, sin texto adicional."
   ].join("\n");
